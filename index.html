@@ -59,9 +59,6 @@ header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justif
 
 /* ---- herramientas ---- */
 .tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.tabs{display:flex;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--surface)}
-.tabs button{border:0;background:transparent;padding:8px 14px;font-family:var(--font-head);font-weight:600;font-size:14px;letter-spacing:.03em}
-.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 12px;font-size:13px}
 .chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
@@ -146,6 +143,18 @@ label.f>span{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:
 .msg .cab .r{font-size:10px;text-transform:uppercase;letter-spacing:.06em}
 .msg p{margin:0;white-space:pre-line;overflow-wrap:anywhere}
 .msg.sys p{color:var(--muted);font-size:12.5px}
+.dia{border:1px solid var(--line);border-radius:4px;background:var(--surface);overflow:hidden}
+.dia+.dia{margin-top:8px}
+.dia>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 12px;
+  font-family:var(--font-head);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ink)}
+.dia>summary::-webkit-details-marker{display:none}
+.dia>summary::before{content:"\25B8";color:var(--accent);font-size:11px;transition:transform .15s;display:inline-block}
+.dia[open]>summary::before{transform:rotate(90deg)}
+.dia>summary:hover{background:var(--soft)}
+.dia>summary .d{flex:1}
+.dia>summary .r{font-family:var(--font-body);font-size:11px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted)}
+.diaCuerpo{display:flex;flex-direction:column;gap:8px;padding:4px 12px 12px}
+@media (prefers-reduced-motion: reduce){.dia>summary::before{transition:none}}
 .nuevo{display:flex;gap:8px;align-items:flex-end}
 .nuevo textarea{flex:1;min-height:42px}
 
@@ -168,6 +177,13 @@ label.f>span{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:
 .toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:4px;z-index:50;font-size:13px;max-width:90vw;text-align:center}
 @media (prefers-reduced-motion: reduce){.bar i{transition:none}}
 
+.pie{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;
+  border-top:1px solid var(--line);padding-top:16px;margin-top:4px}
+.pie b{font-family:var(--font-head);font-size:13px;text-transform:uppercase;letter-spacing:.07em}
+.pie p{margin:4px 0 0;max-width:62ch}
+.secBadge{display:inline-block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--accent);background:var(--soft);border-radius:3px;padding:1px 6px;margin-bottom:4px}
+
 </style>
 </head>
 <body>
@@ -186,14 +202,20 @@ label.f>span{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:
   </header>
   <section class="progress" id="progress" aria-label="Avance"></section>
   <section class="tools">
-    <div class="tabs" id="tabs" role="group" aria-label="Hoja"></div>
     <div class="chips" id="chips" role="group" aria-label="Filtro de estado"></div>
     <input class="search" id="q" type="search" placeholder="Buscar localización, material, formato" aria-label="Buscar">
     <button class="btn" id="pdf" type="button">Exportar PDF</button>
-    <button class="btn" id="importar" type="button" hidden>Importar Excel</button>
-    <button class="btn primary" id="add" type="button" hidden>+ Agregar acabado</button>
+    <button class="btn" id="importar" type="button">Importar Excel</button>
+    <button class="btn primary" id="add" type="button">+ Agregar acabado</button>
   </section>
   <div class="tablewrap" id="tablewrap"></div>
+  <footer class="pie">
+    <div>
+      <b>Copia de respaldo</b>
+      <p class="sub">Baja un archivo HTML con toda la memoria tal como está en este momento: fichas, fotos y bitácora. Se abre en cualquier navegador sin internet y sin conexión a la base.</p>
+    </div>
+    <button class="btn" id="backup" type="button">Hacer back up</button>
+  </footer>
 </div>
 
 <div id="overlay"></div>
@@ -238,7 +260,7 @@ var DEPTOS = ['Proyectos', 'Diseño', 'Compras'];
 var S = {
   nombre: '', depto: '',
   cfg: { empresa: 'CABO DEVELOPMENT', obra: '', clave: '', cliente: '' },
-  items: [], cotiz: {}, nComent: {},
+  items: [], nComent: {},
   hoja: 'memoria', filtro: 'todos', prov: '', provEtiqueta: '', q: '',
   edit: null, cargado: false
 };
@@ -313,10 +335,6 @@ async function cargar() {
   if (a.error) { toast('No se pudieron leer los acabados: ' + a.error.message); return; }
   S.items = a.data || [];
 
-  var c = await sb.from('cotizaciones').select('*').order('creado_en', { ascending: false });
-  S.cotiz = {};
-  (c.data || []).forEach(function (x) { if (!S.cotiz[x.acabado_id]) S.cotiz[x.acabado_id] = []; S.cotiz[x.acabado_id].push(x); });
-
   var n = await sb.from('comentarios').select('acabado_id');
   S.nComent = {};
   (n.data || []).forEach(function (x) { S.nComent[x.acabado_id] = (S.nComent[x.acabado_id] || 0) + 1; });
@@ -328,7 +346,6 @@ async function cargar() {
 function vivo() {
   sb.channel('memoria')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'acabados' }, function () { cargar(); })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'cotizaciones' }, function () { cargar(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'comentarios' }, function () {
       cargar(); if (S.edit) verBitacora(S.edit.id);
     })
@@ -339,11 +356,8 @@ function vivo() {
 function filas() {
   var q = S.q.trim().toLowerCase();
   return S.items.filter(function (it) {
-    if (it.hoja !== S.hoja) return false;
     if (S.filtro === 'listos' && it.estado !== 'listo') return false;
     if (S.filtro === 'pendientes' && it.estado === 'listo') return false;
-    if (S.filtro === 'cotizados' && !(S.cotiz[it.id] || []).length) return false;
-    if (S.filtro === 'sincotizar' && (S.cotiz[it.id] || []).length) return false;
     if (S.prov) {
       var pv = String(it.proveedor || '').trim().toLowerCase();
       if (S.prov === '__sin__') { if (pv) return false; } else if (pv !== S.prov) return false;
@@ -353,7 +367,10 @@ function filas() {
       if (h.indexOf(q) < 0) return false;
     }
     return true;
-  }).sort(function (a, b) { return (a.orden || 0) - (b.orden || 0); });
+  }).sort(function (a, b) {
+    var ha = a.hoja === 'memoria' ? 0 : 1, hb = b.hoja === 'memoria' ? 0 : 1;
+    return ha !== hb ? ha - hb : (a.orden || 0) - (b.orden || 0);
+  });
 }
 
 function renderHead() {
@@ -371,17 +388,15 @@ function renderHead() {
 }
 
 function renderProgress() {
-  var all = S.items.filter(function (i) { return i.hoja === S.hoja; });
+  var all = S.items;
   var t = all.length, l = all.filter(function (i) { return i.estado === 'listo'; }).length;
   var q = all.filter(function (i) { return i.estado !== 'listo' && preguntas(i); }).length;
   var np = all.filter(function (i) { return !String(i.proveedor || '').trim(); }).length;
-  var cz = all.filter(function (i) { return (S.cotiz[i.id] || []).length; }).length;
   var p = t ? Math.round(l / t * 100) : 0;
   $('progress').innerHTML = '<div class="stats">'
     + '<div class="stat"><span class="n">' + t + '</span><span class="l">Renglones</span></div>'
     + '<div class="stat ok"><span class="n">' + l + '</span><span class="l">Listos para cotizar</span></div>'
     + '<div class="stat"><span class="n">' + (t - l) + '</span><span class="l">En borrador</span></div>'
-    + '<div class="stat ok"><span class="n">' + cz + '</span><span class="l">Con cotización</span></div>'
     + '<div class="stat q"><span class="n">' + q + '</span><span class="l">Con preguntas abiertas</span></div>'
     + (true ? '<div class="stat q"><span class="n">' + np + '</span><span class="l">Sin proveedor</span></div>' : '')
     + '</div><div class="pct">' + p + '% listo</div>'
@@ -389,18 +404,14 @@ function renderProgress() {
 }
 
 function renderTools() {
-  $('tabs').innerHTML = HOJAS.map(function (h) {
-    var n = S.items.filter(function (i) { return i.hoja === h[0]; }).length;
-    return '<button type="button" data-h="' + h[0] + '" aria-pressed="' + (S.hoja === h[0]) + '">' + h[1] + ' · ' + n + '</button>';
-  }).join('');
-  var chips = [['todos', 'Todos'], ['pendientes', 'Borrador'], ['listos', 'Listos'], ['cotizados', 'Cotizados'], ['sincotizar', 'Sin cotizar']];
+  var chips = [['todos', 'Todos'], ['pendientes', 'Borrador'], ['listos', 'Listos']];
   $('chips').innerHTML = chips.map(function (c) {
     return '<button class="chip" type="button" data-f="' + c[0] + '" aria-pressed="' + (S.filtro === c[0]) + '">' + c[1] + '</button>';
   }).join('');
 }
 
 function provHtml() {
-  var all = S.items.filter(function (i) { return i.hoja === S.hoja; });
+  var all = S.items;
   var cuenta = {}, etiqueta = {}, sin = 0;
   all.forEach(function (i) {
     var v = String(i.proveedor || '').trim();
@@ -420,21 +431,11 @@ function thumb(it) {
   return u ? '<img class="thumb" loading="lazy" alt="Referencia" data-zoom="' + esc(u) + '" src="' + esc(u) + '" onerror="this.outerHTML=\'<div class=&quot;noimg&quot;>sin imagen</div>\'">' : '<div class="noimg">sin imagen</div>';
 }
 
-function cotizHtml(it) {
-  var l = S.cotiz[it.id] || [];
-  if (!l.length) return '<span class="cot sin">sin cotizar</span>';
-  var mejor = l.slice().sort(function (a, b) { return (a.precio || 1e15) - (b.precio || 1e15); })[0];
-  var txt = mejor.precio != null
-    ? '<b>$' + Number(mejor.precio).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</b> ' + esc(mejor.moneda) + '/' + esc(mejor.unidad)
-    : '<b>—</b>';
-  return '<span class="cot">' + txt + (l.length > 1 ? '<br><span class="sub">' + l.length + ' cotizaciones</span>' : '') + '</span>';
-}
-
 function renderTable() {
   var list = filas(), w = $('tablewrap');
   if (!S.cargado) { w.innerHTML = '<div class="empty"><b>Cargando acabados…</b></div>'; return; }
   if (!list.length) {
-    var hay = S.items.some(function (i) { return i.hoja === S.hoja; });
+    var hay = S.items.length > 0;
     w.innerHTML = '<div class="empty"><b>' + (hay ? 'Ningún renglón coincide' : 'Aún no hay acabados en esta hoja') + '</b>'
       + (S.prov || S.filtro !== 'todos' || S.q.trim()
         ? '<div style="margin-top:10px"><button class="btn" type="button" id="limpiar">Quitar filtros</button></div>'
@@ -445,7 +446,7 @@ function renderTable() {
   }
   var h = '<table><thead><tr><th>Estado</th><th></th><th>Localización</th><th>Material y acabado</th>'
     + '<th class="thprov"><span>Proveedor / marca</span>' + provHtml() + '</th>'
-    + '<th>Formato</th><th>Cotización</th><th>Bitácora</th></tr></thead><tbody>';
+    + '<th>Formato</th><th>Bitácora</th></tr></thead><tbody>';
   list.forEach(function (it) {
     var l = it.estado === 'listo', nc = S.nComent[it.id] || 0;
     h += '<tr data-id="' + esc(it.id) + '" class="' + (l ? 'is-listo' : '') + '" tabindex="0">'
@@ -454,14 +455,13 @@ function renderTable() {
         : '<span class="pill ' + (l ? 'listo' : 'borrador') + '">' + (l ? '✓ Listo para cotizar' : 'Borrador') + '</span>')
       + (!l && preguntas(it) ? '<br><span class="flag">Preguntas abiertas</span>' : '') + '</td>'
       + '<td>' + thumb(it) + '</td>'
-      + '<td class="pre">' + esc(it.localizacion) + '</td>'
+      + '<td class="pre">' + (it.hoja === 'despieces' ? '<span class="secBadge">Despiece</span><br>' : '') + esc(it.localizacion) + '</td>'
       + '<td class="pre">' + esc(it.material || (it.img_material ? '(ver imagen)' : ''))
       + '<div class="sub">' + esc([it.naturaleza, it.acabado].filter(Boolean).join(' · ')) + '</div></td>'
       + '<td>' + (String(it.proveedor || '').trim()
         ? '<span class="prov">' + esc(it.proveedor) + '</span>'
         : '<span class="prov falta">Falta proveedor</span>') + '</td>'
       + '<td class="pre">' + esc(it.formato || (it.img_formato ? '(ver imagen)' : '')) + '</td>'
-      + '<td>' + cotizHtml(it) + '</td>'
       + '<td><span class="nc' + (nc ? ' hay' : '') + '">' + nc + '</span></td></tr>';
   });
   w.innerHTML = h + '</tbody></table>';
@@ -477,8 +477,8 @@ function abrirCajon(id) {
   var it, nuevo = false;
   if (id === 'new') {
     nuevo = true;
-    var mx = 0; S.items.forEach(function (i) { if (i.hoja === S.hoja) mx = Math.max(mx, i.orden || 0); });
-    it = { id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), hoja: S.hoja, orden: mx + 1, estado: 'borrador' };
+    var mx = 0; S.items.forEach(function (i) { if (i.hoja === 'memoria') mx = Math.max(mx, i.orden || 0); });
+    it = { id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), hoja: 'memoria', orden: mx + 1, estado: 'borrador' };
   } else {
     it = S.items.filter(function (i) { return i.id === id; })[0];
     if (!it) return;
@@ -497,7 +497,6 @@ function cajon() {
     + '<button class="btn" type="button" id="x">Cerrar</button></div></div><div class="db" id="dbody">';
 
   if (d.estado === 'listo' && d.listo_en) h += '<div class="note ok">Cerrado para cotizar el ' + esc(fdate(d.listo_en)) + '.</div>';
-  if (!puede) h += '<div class="note info">Ves este renglón porque está asignado a ' + esc(S.proveedor) + '. La ficha la mantiene Costos; tú puedes cotizar y comentar abajo.</div>';
 
   // imágenes
   h += '<div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin-bottom:6px">Imágenes</div><div class="imgs">';
@@ -520,10 +519,12 @@ function cajon() {
       : '<input data-k="' + k + '" value="' + esc(v) + '"' + (f[3] === 'nat' ? ' list="natlist"' : '') + (puede ? '' : ' disabled') + '>';
     h += '<label class="f' + (hi ? ' hi' : '') + '" style="' + (wide ? 'grid-column:1/-1' : '') + '"><span>' + f[1] + '</span>' + inp + '</label>';
   });
+  h += '<label class="f"><span>Sección</span><select data-k="hoja"' + (puede ? '' : ' disabled') + '>'
+    + HOJAS.map(function (x) { return '<option value="' + x[0] + '"' + (d.hoja === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('')
+    + '</select></label>';
   h += '</div><datalist id="natlist">' + NAT.map(function (n) { return '<option value="' + n + '">'; }).join('') + '</datalist>';
 
   if (!e.nuevo) {
-    h += '<div class="secc"><h3>Cotizaciones</h3><div id="cotizBox"></div></div>';
     h += '<div class="secc"><h3>Bitácora</h3><div class="bitacora" id="bitacora"><p class="sub">Cargando…</p></div>'
       + '<div class="nuevo" style="margin-top:10px"><textarea id="nuevoComent" placeholder="Escribe un comentario para el equipo…"></textarea>'
       + '<button class="btn primary" type="button" id="comentar">Enviar</button></div></div>';
@@ -535,7 +536,7 @@ function cajon() {
     else h += '<button class="btn ok" type="button" id="cerrarR">Guardar y marcar listo para cotizar</button>';
     h += '<span class="spacer"></span>' + (!e.nuevo ? '<button class="btn danger" type="button" id="borrar">Eliminar</button>' : '');
   } else {
-    h += '<button class="btn primary" type="button" id="cotizar">Cotizar este acabado</button><span class="spacer"></span>';
+    h += '<span class="spacer"></span>';
   }
   h += '</div></aside>';
 
@@ -551,8 +552,7 @@ function cajon() {
   if ($('reabrir')) $('reabrir').onclick = reabrir;
   if ($('borrar')) $('borrar').onclick = pedirBorrar;
   if ($('comentar')) $('comentar').onclick = enviarComentario;
-  if ($('cotizar')) $('cotizar').onclick = function () { formCotizacion(); };
-  if (!e.nuevo) pintarCotiz();
+
 }
 
 function clickCajon(ev) {
@@ -585,6 +585,7 @@ async function subirImagen(campo) {
 function limpiar(d) {
   var o = {};
   FIELDS.forEach(function (f) { o[f[0]] = String(d[f[0]] == null ? '' : d[f[0]]).trim(); });
+  if (d.hoja) o.hoja = d.hoja;
   IMGS.forEach(function (m) { o[m[0]] = d[m[0]] || null; });
   return o;
 }
@@ -596,7 +597,7 @@ async function guardar(listo) {
   if (listo) { data.estado = 'listo'; data.listo_por = firma(); data.listo_en = new Date().toISOString(); }
   var r;
   if (e.nuevo) {
-    data.id = d.id; data.hoja = d.hoja; data.orden = d.orden;
+    data.id = d.id; data.hoja = d.hoja || 'memoria'; data.orden = d.orden;
     data.estado = listo ? 'listo' : 'borrador'; data.creado_por = firma();
     r = await sb.from('acabados').insert(data);
   } else {
@@ -612,7 +613,7 @@ async function reabrir() {
   S.edit.draft.estado = 'borrador'; conScroll(cajon); cargar();
 }
 function pedirBorrar() {
-  $('warn').innerHTML = '<div class="note q">Se eliminará este renglón, sus cotizaciones y su bitácora, para todos. '
+  $('warn').innerHTML = '<div class="note q">Se eliminará este renglón y su bitácora, para todos. '
     + '<button class="btn danger" type="button" id="borrar2" style="margin-left:8px">Sí, eliminar</button></div>';
   $('borrar2').onclick = async function () {
     var r = await sb.from('acabados').delete().eq('id', S.edit.id);
@@ -630,56 +631,6 @@ async function alternarEstado(it) {
   toast(listo ? 'Renglón listo para cotizar' : 'Renglón reabierto');
 }
 
-/* ---- cotizaciones ---- */
-function pintarCotiz() {
-  var box = $('cotizBox'); if (!box) return;
-  var l = S.cotiz[S.edit.id] || [];
-  var h = l.length ? '' : '<p class="sub">Todavía no hay cotizaciones de este acabado.</p>';
-  l.forEach(function (c) {
-    h += '<div class="msg"><div class="cab"><b>' + esc(c.proveedor) + '</b>'
-      + '<span>' + esc(fdate(c.creado_en)) + '</span>'
-      + (c.vigencia ? '<span>vigente al ' + esc(fdate(c.vigencia)) + '</span>' : '') + '</div>'
-      + '<p>' + (c.precio != null ? '<b>$' + Number(c.precio).toLocaleString('es-MX', { minimumFractionDigits: 2 }) + ' ' + esc(c.moneda) + '/' + esc(c.unidad) + '</b>' : 'sin precio')
-      + (c.tiempo_entrega ? ' · entrega ' + esc(c.tiempo_entrega) : '')
-      + (c.notas ? '\n' + esc(c.notas) : '') + '</p></div>';
-  });
-  if (!true) h += '<button class="btn" type="button" id="cotizar2" style="margin-top:8px">Agregar mi cotización</button>';
-  box.innerHTML = h;
-  if ($('cotizar2')) $('cotizar2').onclick = function () { formCotizacion(); };
-}
-
-function formCotizacion() {
-  var box = $('cotizBox') || $('warn');
-  box.innerHTML = '<div class="grid2" style="margin-bottom:8px">'
-    + '<label class="f"><span>Precio</span><input id="cPrecio" inputmode="decimal" placeholder="0.00"></label>'
-    + '<label class="f"><span>Moneda</span><select id="cMoneda"><option>MXN</option><option>USD</option></select></label>'
-    + '<label class="f"><span>Unidad</span><select id="cUnidad"><option value="m2">m²</option><option value="pza">pieza</option><option value="ml">metro lineal</option><option value="lote">lote</option></select></label>'
-    + '<label class="f"><span>Tiempo de entrega</span><input id="cEntrega" placeholder="6 semanas"></label>'
-    + '<label class="f"><span>Vigencia</span><input id="cVigencia" type="date"></label>'
-    + '<label class="f" style="grid-column:1/-1"><span>Notas</span><textarea id="cNotas" placeholder="Condiciones, mínimos, alcance…"></textarea></label>'
-    + '</div><button class="btn primary" type="button" id="cGuardar">Guardar cotización</button>';
-  $('cGuardar').onclick = async function () {
-    var it = S.items.filter(function (i) { return i.id === S.edit.id; })[0];
-    var fila = {
-      acabado_id: S.edit.id,
-      proveedor: it.proveedor || '',
-      precio: num($('cPrecio').value),
-      moneda: $('cMoneda').value, unidad: $('cUnidad').value,
-      tiempo_entrega: $('cEntrega').value.trim(),
-      vigencia: $('cVigencia').value || null,
-      notas: $('cNotas').value.trim(),
-      creado_por: firma(), capturado_por: firma()
-    };
-    if (!fila.proveedor) { toast('Este renglón no tiene proveedor asignado'); return; }
-    $('cGuardar').disabled = true;
-    var r = await sb.from('cotizaciones').insert(fila);
-    $('cGuardar').disabled = false;
-    if (r.error) { toast('No se pudo guardar la cotización: ' + r.error.message); return; }
-    toast('Cotización registrada');
-    await cargar(); pintarCotiz();
-  };
-}
-
 /* ---- bitácora ---- */
 async function verBitacora(id) {
   var box = $('bitacora'); if (!box) return;
@@ -694,6 +645,16 @@ async function verHistorial(id) {
   S.hist = (r.data || []);
   pintarBitacora();
 }
+function diaDe(iso) {
+  var d = new Date(iso), hoy = new Date();
+  var mismo = function (a, b) { return a.toDateString() === b.toDateString(); };
+  if (mismo(d, hoy)) return 'Hoy';
+  var ayer = new Date(hoy.getTime() - 86400000);
+  if (mismo(d, ayer)) return 'Ayer';
+  return d.toLocaleDateString('es-MX', { weekday: 'long', day: '2-digit', month: 'long' });
+}
+function hora(iso) { try { return new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+
 function pintarBitacora() {
   var box = $('bitacora'); if (!box) return;
   var ev = [];
@@ -701,16 +662,36 @@ function pintarBitacora() {
   (S.hist || []).forEach(function (x) { ev.push({ t: x.creado_en, tipo: 'h', d: x }); });
   ev.sort(function (a, b) { return a.t < b.t ? -1 : 1; });
   if (!ev.length) { box.innerHTML = '<p class="sub">Sin movimientos todavía. El primer comentario queda aquí.</p>'; return; }
-  box.innerHTML = ev.map(function (e) {
+
+  // un grupo plegable por día; el más reciente abierto, los anteriores cerrados
+  var dias = [], indice = {};
+  ev.forEach(function (e) {
+    var d = diaDe(e.t);
+    if (!(d in indice)) { indice[d] = dias.length; dias.push({ dia: d, lista: [] }); }
+    dias[indice[d]].lista.push(e);
+  });
+  box.innerHTML = dias.map(function (g, n) {
+    var ultimo = n === dias.length - 1;
+    var coments = g.lista.filter(function (e) { return e.tipo === 'c'; }).length;
+    var cambios = g.lista.length - coments;
+    var resumen = [coments ? coments + (coments === 1 ? ' comentario' : ' comentarios') : '',
+                   cambios ? cambios + (cambios === 1 ? ' cambio' : ' cambios') : ''].filter(Boolean).join(' · ');
+    return '<details class="dia"' + (ultimo ? ' open' : '') + '>'
+      + '<summary><span class="d">' + esc(g.dia) + '</span><span class="r">' + esc(resumen) + '</span></summary>'
+      + '<div class="diaCuerpo">' + g.lista.map(pintarEvento).join('') + '</div></details>';
+  }).join('');
+}
+function pintarEvento(e) {
+  return [e].map(function (e) {
     if (e.tipo === 'c') {
       var c = e.d;
       return '<div class="msg"><div class="cab"><b>' + esc(c.autor_nombre || c.autor_email) + '</b>'
-        + '<span class="r">' + esc(c.departamento || c.rol || '') + '</span><span>' + esc(fdatetime(c.creado_en)) + '</span></div>'
+        + '<span class="r">' + esc(c.departamento || c.rol || '') + '</span><span>' + esc(hora(c.creado_en)) + '</span></div>'
         + '<p>' + esc(c.texto) + '</p></div>';
     }
     var x = e.d;
     return '<div class="msg sys"><div class="cab"><b>' + esc(x.autor_nombre || x.autor_email || 'sin identificar') + '</b>'
-      + '<span>' + esc(fdatetime(x.creado_en)) + '</span></div>'
+      + '<span>' + esc(hora(x.creado_en)) + '</span></div>'
       + '<p>cambió <b>' + esc(x.campo) + '</b>: ' + esc((x.antes || '—').slice(0, 90)) + ' → ' + esc((x.despues || '—').slice(0, 90)) + '</p></div>';
   }).join('');
 }
@@ -806,7 +787,7 @@ function pintarPlan(plan) {
   var cerrados = cambian.filter(function (p) { return p.actual && p.actual.estado === 'listo'; });
   var h = '<div class="note info">Encontré <b>' + plan.length + '</b> renglones en el archivo: '
     + '<b>' + nuevos.length + '</b> nuevos, <b>' + cambian.length + '</b> con cambios, <b>' + iguales.length + '</b> sin cambio.</div>';
-  if (cerrados.length) h += '<div class="note warn">' + cerrados.length + ' de los que cambian ya estaban marcados como listos para cotizar. Se actualizan y siguen listos; revisa que el cambio no invalide la cotización.</div>';
+  if (cerrados.length) h += '<div class="note warn">' + cerrados.length + ' de los que cambian ya estaban marcados como listos para cotizar. Se actualizan y siguen listos; revisa que el cambio no los invalide.</div>';
   if (nuevos.length + cambian.length) {
     h += '<div class="prev"><table><tbody>';
     nuevos.concat(cambian).forEach(function (p) {
@@ -865,7 +846,7 @@ async function exportPdf() {
   if (!JP) { toast('No se pudo cargar el generador de PDF'); return; }
   var lista = filas();
   if (!lista.length) { toast('No hay renglones que exportar con estos filtros'); return; }
-  var titulo = HOJAS.filter(function (h) { return h[0] === S.hoja; })[0][1];
+  var titulo = 'Memoria de acabados';
   var btn = $('pdf'); btn.disabled = true; btn.textContent = 'Armando PDF…';
   try {
     var imgs = await Promise.all(lista.map(function (r) { return miniatura(imgUrl(r.img_ref || r.img_material || r.img_formato)); }));
@@ -876,21 +857,18 @@ async function exportPdf() {
     doc.text('MEMORIA DE ACABADOS', M, y); y += 16;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(107, 118, 132);
     doc.text([S.cfg.empresa, S.cfg.obra ? 'Obra: ' + S.cfg.obra : '', S.cfg.clave ? 'Clave: ' + S.cfg.clave : '', S.cfg.cliente ? 'Cliente: ' + S.cfg.cliente : ''].filter(Boolean).join('   ·   '), M, y); y += 12;
-    var f = ['hoja: ' + titulo];
+    var f = [];
     if (S.filtro !== 'todos') f.push('filtro: ' + S.filtro);
     if (S.prov) f.push('proveedor: ' + (S.provEtiqueta || S.prov));
     if (S.q.trim()) f.push('búsqueda: “' + S.q.trim() + '”');
-    doc.text(f.join('   ·   ') + '   ·   Generado el ' + new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' }), M, y); y += 10;
+    doc.text((f.length ? f.join('   ·   ') + '   ·   ' : '') + 'Generado el ' + new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' }), M, y); y += 10;
     doc.setDrawColor(226, 218, 202); doc.line(M, y, W - M, y);
 
     var cuerpo = lista.map(function (r) {
-      var l = S.cotiz[r.id] || [];
-      var mejor = l.slice().sort(function (a, b) { return (a.precio || 1e15) - (b.precio || 1e15); })[0];
-      return ['', String(r.localizacion || ''), String(r.material || (r.img_material ? '(ver imagen)' : '')),
+      return ['', (r.hoja === 'despieces' ? '[Despiece] ' : '') + String(r.localizacion || ''), String(r.material || (r.img_material ? '(ver imagen)' : '')),
         String(r.proveedor || '').trim() || '— falta proveedor —',
         [r.naturaleza, r.acabado].filter(Boolean).join(' · '),
         String(r.formato || (r.img_formato ? '(ver imagen)' : '')),
-        mejor && mejor.precio != null ? '$' + Number(mejor.precio).toLocaleString('es-MX', { minimumFractionDigits: 2 }) + ' ' + mejor.moneda : 'sin cotizar',
         r.estado === 'listo' ? 'LISTO' : 'Borrador',
         String(r.observaciones || '')];
     });
@@ -899,18 +877,18 @@ async function exportPdf() {
     doc.text(titulo.toUpperCase() + '  ·  ' + lista.length + ' renglones', M, inicio - 8);
     doc.autoTable({
       startY: inicio, margin: { left: M, right: M, top: M, bottom: M },
-      head: [['Imagen', 'Localización', 'Material y acabado', 'Proveedor / marca', 'Naturaleza · acabado', 'Formato', 'Cotización', 'Estado', 'Observaciones']],
+      head: [['Imagen', 'Localización', 'Material y acabado', 'Proveedor / marca', 'Naturaleza · acabado', 'Formato', 'Estado', 'Observaciones']],
       body: cuerpo, theme: 'grid',
       styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 4, overflow: 'linebreak', valign: 'top', lineColor: [226, 218, 202], textColor: [28, 42, 53] },
       headStyles: { fillColor: [29, 78, 110], textColor: [255, 253, 247], fontStyle: 'bold', fontSize: 7.5 },
       alternateRowStyles: { fillColor: [250, 247, 239] },
-      columnStyles: { 0: { cellWidth: 56 }, 1: { cellWidth: 100 }, 2: { cellWidth: 115 }, 3: { cellWidth: 82, fontStyle: 'bold', textColor: [29, 78, 110] }, 4: { cellWidth: 78 }, 5: { cellWidth: 78 }, 6: { cellWidth: 62 }, 7: { cellWidth: 44 }, 8: { cellWidth: 'auto' } },
+      columnStyles: { 0: { cellWidth: 56 }, 1: { cellWidth: 112 }, 2: { cellWidth: 130 }, 3: { cellWidth: 92, fontStyle: 'bold', textColor: [29, 78, 110] }, 4: { cellWidth: 88 }, 5: { cellWidth: 88 }, 6: { cellWidth: 46 }, 7: { cellWidth: 'auto' } },
       didParseCell: function (dt) {
         if (dt.section !== 'body') return;
         dt.cell.styles.minCellHeight = 52;
         var r = lista[dt.row.index]; if (!r) return;
         if (dt.column.index === 3 && !String(r.proveedor || '').trim()) { dt.cell.styles.textColor = [138, 90, 0]; dt.cell.styles.fontStyle = 'italic'; }
-        if (dt.column.index === 7 && r.estado === 'listo') { dt.cell.styles.textColor = [26, 110, 74]; dt.cell.styles.fontStyle = 'bold'; }
+        if (dt.column.index === 6 && r.estado === 'listo') { dt.cell.styles.textColor = [26, 110, 74]; dt.cell.styles.fontStyle = 'bold'; }
         if (r.estado === 'listo') dt.cell.styles.fillColor = [221, 239, 226];
       },
       didDrawPage: function () {
@@ -926,7 +904,7 @@ async function exportPdf() {
         try { doc.addImage(im.d, 'JPEG', dt.cell.x + (dt.cell.width - w) / 2, dt.cell.y + 3, w, hh); } catch (e) {}
       }
     });
-    var nom = ('Memoria de acabados ' + (S.cfg.obra || S.cfg.clave || '') + ' - ' + titulo + (S.prov ? ' - ' + (S.provEtiqueta || '') : ''))
+    var nom = ('Memoria de acabados ' + (S.cfg.obra || S.cfg.clave || '') + (S.prov ? ' - ' + (S.provEtiqueta || '') : ''))
       .replace(/[^\wáéíóúñÁÉÍÓÚÑ \-]/g, '').trim() + '.pdf';
     doc.save(nom);
     toast('PDF listo');
@@ -934,6 +912,77 @@ async function exportPdf() {
     toast('No se pudo generar el PDF: ' + (err.message || 'error desconocido'));
   }
   btn.disabled = false; renderTable();
+}
+
+/* ===================== RESPALDO ===================== */
+async function hacerBackup() {
+  var b = $('backup'); b.disabled = true; b.textContent = 'Armando respaldo…';
+  try {
+    var rc = await sb.from('comentarios').select('*').order('creado_en');
+    var rh = await sb.from('historial').select('*').order('creado_en');
+    var porFila = {};
+    (rc.data || []).forEach(function (c) { (porFila[c.acabado_id] = porFila[c.acabado_id] || []).push({ t: c.creado_en, quien: c.autor_nombre, dep: c.departamento || c.rol || '', txt: c.texto, sys: false }); });
+    (rh.data || []).forEach(function (x) { (porFila[x.acabado_id] = porFila[x.acabado_id] || []).push({ t: x.creado_en, quien: x.autor_nombre || 'sin identificar', dep: '', txt: 'cambió ' + x.campo + ': ' + (x.antes || '—') + ' → ' + (x.despues || '—'), sys: true }); });
+
+    var lista = S.items.slice().sort(function (a, b) {
+      var ha = a.hoja === 'memoria' ? 0 : 1, hb = b.hoja === 'memoria' ? 0 : 1;
+      return ha !== hb ? ha - hb : (a.orden || 0) - (b.orden || 0);
+    });
+    var hoy = new Date();
+    var fechaTxt = hoy.toLocaleString('es-MX', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    var filas = lista.map(function (r) {
+      var u = imgUrl(r.img_ref || r.img_material || r.img_formato);
+      var bit = (porFila[r.id] || []).sort(function (a, b) { return a.t < b.t ? -1 : 1; });
+      return '<tr class="' + (r.estado === 'listo' ? 'listo' : '') + '">'
+        + '<td>' + (r.estado === 'listo' ? '✓ Listo' : 'Borrador') + (r.hoja === 'despieces' ? '<br><i>Despiece</i>' : '') + '</td>'
+        + '<td>' + (u ? '<img src="' + u + '">' : '') + '</td>'
+        + '<td>' + esc(r.localizacion) + '</td>'
+        + '<td>' + esc(r.material) + '<div class="s">' + esc([r.naturaleza, r.acabado].filter(Boolean).join(' · ')) + '</div></td>'
+        + '<td class="p">' + esc(r.proveedor || '—') + '</td>'
+        + '<td>' + esc(r.formato) + '</td>'
+        + '<td>' + esc(r.origen) + '</td>'
+        + '<td>' + esc(r.observaciones) + '</td>'
+        + '<td class="b">' + (bit.length
+            ? bit.map(function (e) { return '<div class="' + (e.sys ? 'sys' : '') + '"><b>' + esc(e.quien || '') + '</b> ' + esc(e.dep) + ' · ' + esc(fdatetime(e.t)) + '<br>' + esc(e.txt) + '</div>'; }).join('')
+            : '<span class="s">—</span>') + '</td></tr>';
+    }).join('');
+
+    var doc = '<!doctype html><html lang="es"><head><meta charset="utf-8">'
+      + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+      + '<title>Respaldo · Memoria de acabados · ' + esc(S.cfg.obra || '') + '</title><style>'
+      + 'body{font-family:system-ui,sans-serif;background:#F5F1E6;color:#1C2A35;margin:0;padding:24px;font-size:13px}'
+      + 'h1{font-size:22px;letter-spacing:.04em;text-transform:uppercase;margin:0 0 4px}'
+      + '.cab{color:#6B7684;margin-bottom:4px}.aviso{color:#8A5A00;background:#F6E7C4;padding:8px 12px;border-radius:4px;margin:12px 0;display:inline-block}'
+      + 'table{border-collapse:collapse;width:100%;background:#FFFDF7;margin-top:12px}'
+      + 'th{background:#1D4E6E;color:#FFFDF7;text-align:left;padding:8px;font-size:11px;text-transform:uppercase;letter-spacing:.06em}'
+      + 'td{border-bottom:1px solid #E2DACA;padding:8px;vertical-align:top}'
+      + 'tr.listo td{background:#DDEFE2}img{width:92px;height:92px;object-fit:cover;border-radius:4px}'
+      + '.s{color:#6B7684;font-size:11px}.p{color:#1D4E6E;font-weight:600}'
+      + '.b{font-size:11px;max-width:320px}.b>div{border-left:2px solid #1D4E6E;padding-left:7px;margin-bottom:6px}'
+      + '.b>div.sys{border-left-color:#E2DACA;color:#6B7684}'
+      + '</style></head><body>'
+      + '<h1>Memoria de acabados</h1>'
+      + '<div class="cab">' + esc(S.cfg.empresa) + ' · Obra ' + esc(S.cfg.obra) + ' · Clave ' + esc(S.cfg.clave) + ' · Cliente ' + esc(S.cfg.cliente) + '</div>'
+      + '<div class="cab">' + lista.length + ' renglones · Respaldo tomado el ' + esc(fechaTxt) + ' por ' + esc(firma()) + '</div>'
+      + '<div class="aviso">Copia congelada. No se conecta a la base ni se actualiza: refleja cómo estaba la memoria en esa fecha.</div>'
+      + '<table><thead><tr><th>Estado</th><th>Imagen</th><th>Localización</th><th>Material y acabado</th>'
+      + '<th>Proveedor / marca</th><th>Formato</th><th>Origen</th><th>Observaciones</th><th>Bitácora</th></tr></thead>'
+      + '<tbody>' + filas + '</tbody></table></body></html>';
+
+    var nombre = ('Respaldo memoria de acabados - ' + (S.cfg.obra || S.cfg.clave || '') + ' - '
+      + hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0'))
+      .replace(/[^\wáéíóúñÁÉÍÓÚÑ \-]/g, '').trim() + '.html';
+
+    var url = URL.createObjectURL(new Blob([doc], { type: 'text/html;charset=utf-8' }));
+    var a = document.createElement('a');
+    a.href = url; a.download = nombre; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 2000);
+    toast('Respaldo descargado');
+  } catch (err) {
+    toast('No se pudo armar el respaldo: ' + (err.message || 'error desconocido'));
+  }
+  b.disabled = false; b.textContent = 'Hacer back up';
 }
 
 /* ===================== EVENTOS ===================== */
@@ -944,11 +993,11 @@ $('meta').addEventListener('change', async function (ev) {
   toast(r.error ? 'No se pudo guardar el encabezado' : 'Encabezado guardado');
   render();
 });
-$('tabs').addEventListener('click', function (ev) { var h = ev.target.getAttribute('data-h'); if (h) { S.hoja = h; S.prov = ''; render(); } });
 $('chips').addEventListener('click', function (ev) { var f = ev.target.getAttribute('data-f'); if (f) { S.filtro = f; render(); } });
 $('q').addEventListener('input', function (ev) { S.q = ev.target.value; renderTable(); });
 $('add').addEventListener('click', function () { abrirCajon('new'); });
 $('importar').addEventListener('click', abrirImportar);
+$('backup').addEventListener('click', hacerBackup);
 $('pdf').addEventListener('click', exportPdf);
 $('tablewrap').addEventListener('change', function (ev) { if (ev.target && ev.target.id === 'prov') { S.prov = ev.target.value; render(); } });
 $('tablewrap').addEventListener('click', function (ev) {
