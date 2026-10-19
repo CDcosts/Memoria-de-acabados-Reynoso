@@ -53,6 +53,7 @@ header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justif
 .stat .n{font-family:var(--font-head);font-weight:600;font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
 .stat .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .stat.ok .n{color:var(--ok)} .stat.q .n{color:var(--q)}
+.stat.azul .n{color:var(--accent)}
 .bar{grid-column:1/-1;height:8px;background:var(--soft);border-radius:2px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--ok);transition:width .3s}
 .pct{font-family:var(--font-mono);font-size:13px;color:var(--muted)}
@@ -66,6 +67,7 @@ header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justif
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:4px;padding:8px 14px;font-weight:500}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
 .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff;font-weight:600}
+.btn.azul{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
 .btn.danger{color:var(--q);border-color:var(--q)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .spacer{flex:1}
@@ -82,11 +84,29 @@ tbody tr.is-listo:hover td{background:#CFE8D8}
 tbody tr.is-listo td:first-child{box-shadow:inset 4px 0 0 var(--ok)}
 .pre{white-space:pre-line;overflow-wrap:anywhere}
 .sub{color:var(--muted);font-size:12px}
+.thumbWrap{position:relative;width:92px;line-height:0}
+.thumbWrap.marcado .thumb,.thumbWrap.marcado .noimg{outline:3px solid var(--accent);outline-offset:-3px}
+.banda{position:absolute;left:0;right:0;bottom:0;background:var(--accent);color:var(--accent-ink);
+  font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  text-align:center;padding:3px 0;line-height:1.2;border-radius:0 0 4px 4px}
 .thumb{width:92px;height:92px;object-fit:cover;border-radius:4px;border:1px solid var(--line);display:block;background:var(--soft);cursor:zoom-in}
 .noimg{width:92px;height:92px;border:1px dashed var(--line);border-radius:4px;display:grid;place-items:center;color:var(--muted);font-size:11px;text-align:center}
 .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:600;white-space:nowrap;background:transparent}
 .pill.listo{color:var(--ok);background:var(--ok-bg);border-color:var(--ok)}
 .pill.borrador{color:var(--warn);background:var(--warn-bg);border-color:var(--warn)}
+.marca{display:inline-block;margin-top:4px;font-size:11px;font-weight:600;border-radius:99px;padding:2px 9px;
+  border:1px dashed var(--line);background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap}
+.marca:hover{border-color:var(--accent);color:var(--accent)}
+.marca.on{border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);
+  font-size:11.5px;padding:3px 11px;letter-spacing:.03em}
+tbody tr.ya-cot td:first-child{box-shadow:inset 5px 0 0 var(--accent)}
+tbody tr.ya-cot.is-listo td:first-child{box-shadow:inset 4px 0 0 var(--ok),inset 10px 0 0 -6px var(--accent)}
+.cotBox{border:1px solid var(--line);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.cotBox.on{border-color:var(--accent);background:#DAE8F0}
+.cotBox label{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px}
+.cotBox label b{font-weight:600}
+.cotBox input[type=text],.cotBox input:not([type]){border:1px solid var(--line);background:var(--surface);border-radius:4px;padding:7px 10px;width:100%}
+.cotBox .sub{font-size:11px}
 .flag{display:inline-block;margin-top:4px;font-size:11px;font-weight:600;color:var(--q);background:var(--q-bg);border-radius:3px;padding:1px 6px}
 .prov{display:inline-block;font-weight:600;color:var(--accent);overflow-wrap:anywhere}
 .prov.falta{color:var(--warn);font-weight:500;font-style:italic}
@@ -131,6 +151,7 @@ label.f>span{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:
 .note.warn{background:var(--warn-bg);color:var(--warn)}
 .note.ok{background:var(--ok-bg);color:var(--ok)}
 .note.info{background:var(--soft);color:var(--muted)}
+.note.azul{background:#DAE8F0;color:#12405C}
 .secc{border-top:1px solid var(--line);padding-top:12px}
 .secc>h3{font-family:var(--font-head);font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 8px}
 
@@ -256,6 +277,12 @@ var FIELDS = [
 ];
 var IMGS = [['img_ref', 'Imagen de referencia'], ['img_material', 'Material (imagen)'], ['img_formato', 'Formato / despiece (imagen)']];
 
+var ESTADOS = {
+  borrador: { txt: 'Borrador', cls: 'borrador' },
+  listo:    { txt: '✓ Listo para cotizar', cls: 'listo' }
+};
+function etiqueta(e) { return ESTADOS[e] || ESTADOS.borrador; }
+
 var DEPTOS = ['Proyectos', 'Diseño', 'Compras'];
 var S = {
   nombre: '', depto: '',
@@ -357,7 +384,9 @@ function filas() {
   var q = S.q.trim().toLowerCase();
   return S.items.filter(function (it) {
     if (S.filtro === 'listos' && it.estado !== 'listo') return false;
-    if (S.filtro === 'pendientes' && it.estado === 'listo') return false;
+    if (S.filtro === 'cotizados' && !it.cotizado_antes) return false;
+    if (S.filtro === 'nuevos' && it.cotizado_antes) return false;
+    if (S.filtro === 'pendientes' && it.estado !== 'borrador') return false;
     if (S.prov) {
       var pv = String(it.proveedor || '').trim().toLowerCase();
       if (S.prov === '__sin__') { if (pv) return false; } else if (pv !== S.prov) return false;
@@ -389,14 +418,17 @@ function renderHead() {
 
 function renderProgress() {
   var all = S.items;
-  var t = all.length, l = all.filter(function (i) { return i.estado === 'listo'; }).length;
-  var q = all.filter(function (i) { return i.estado !== 'listo' && preguntas(i); }).length;
+  var t = all.length;
+  var l = all.filter(function (i) { return i.estado === 'listo'; }).length;
+  var co = all.filter(function (i) { return i.cotizado_antes; }).length;
+  var q = all.filter(function (i) { return i.estado === 'borrador' && preguntas(i); }).length;
   var np = all.filter(function (i) { return !String(i.proveedor || '').trim(); }).length;
   var p = t ? Math.round(l / t * 100) : 0;
   $('progress').innerHTML = '<div class="stats">'
     + '<div class="stat"><span class="n">' + t + '</span><span class="l">Renglones</span></div>'
     + '<div class="stat ok"><span class="n">' + l + '</span><span class="l">Listos para cotizar</span></div>'
     + '<div class="stat"><span class="n">' + (t - l) + '</span><span class="l">En borrador</span></div>'
+    + '<div class="stat azul"><span class="n">' + co + '</span><span class="l">Ya cotizados antes</span></div>'
     + '<div class="stat q"><span class="n">' + q + '</span><span class="l">Con preguntas abiertas</span></div>'
     + (true ? '<div class="stat q"><span class="n">' + np + '</span><span class="l">Sin proveedor</span></div>' : '')
     + '</div><div class="pct">' + p + '% listo</div>'
@@ -404,7 +436,7 @@ function renderProgress() {
 }
 
 function renderTools() {
-  var chips = [['todos', 'Todos'], ['pendientes', 'Borrador'], ['listos', 'Listos']];
+  var chips = [['todos', 'Todos'], ['pendientes', 'Borrador'], ['listos', 'Listos'], ['cotizados', 'Ya cotizados'], ['nuevos', 'Nunca cotizados']];
   $('chips').innerHTML = chips.map(function (c) {
     return '<button class="chip" type="button" data-f="' + c[0] + '" aria-pressed="' + (S.filtro === c[0]) + '">' + c[1] + '</button>';
   }).join('');
@@ -428,8 +460,14 @@ function provHtml() {
 
 function thumb(it) {
   var u = imgUrl(it.img_ref || it.img_formato || it.img_material);
-  return u ? '<img class="thumb" loading="lazy" alt="Referencia" data-zoom="' + esc(u) + '" src="' + esc(u) + '" onerror="this.outerHTML=\'<div class=&quot;noimg&quot;>sin imagen</div>\'">' : '<div class="noimg">sin imagen</div>';
+  var img = u
+    ? '<img class="thumb" loading="lazy" alt="Referencia" data-zoom="' + esc(u) + '" src="' + esc(u) + '" onerror="this.outerHTML=\'<div class=&quot;noimg&quot;>sin imagen</div>\'">'
+    : '<div class="noimg">sin imagen</div>';
+  return '<div class="thumbWrap' + (it.cotizado_antes ? ' marcado' : '') + '">' + img
+    + (it.cotizado_antes ? '<span class="banda" title="' + esc(it.cotizado_antes_nota || 'Ya se cotizó antes') + '">Cotizado</span>' : '')
+    + '</div>';
 }
+
 
 function renderTable() {
   var list = filas(), w = $('tablewrap');
@@ -448,12 +486,13 @@ function renderTable() {
     + '<th class="thprov"><span>Proveedor / marca</span>' + provHtml() + '</th>'
     + '<th>Formato</th><th>Bitácora</th></tr></thead><tbody>';
   list.forEach(function (it) {
-    var l = it.estado === 'listo', nc = S.nComent[it.id] || 0;
-    h += '<tr data-id="' + esc(it.id) + '" class="' + (l ? 'is-listo' : '') + '" tabindex="0">'
-      + '<td>' + (true
-        ? '<button type="button" class="pill ' + (l ? 'listo' : 'borrador') + '" data-toggle="' + esc(it.id) + '">' + (l ? '✓ Listo para cotizar' : 'Borrador') + '</button>'
-        : '<span class="pill ' + (l ? 'listo' : 'borrador') + '">' + (l ? '✓ Listo para cotizar' : 'Borrador') + '</span>')
-      + (!l && preguntas(it) ? '<br><span class="flag">Preguntas abiertas</span>' : '') + '</td>'
+    var et = etiqueta(it.estado), nc = S.nComent[it.id] || 0;
+    h += '<tr data-id="' + esc(it.id) + '" class="is-' + et.cls + (it.cotizado_antes ? ' ya-cot' : '') + '" tabindex="0">'
+      + '<td><button type="button" class="pill ' + et.cls + '" data-toggle="' + esc(it.id) + '" title="Clic para cambiar el estado">' + et.txt + '</button>'
+      + '<br><button type="button" class="marca' + (it.cotizado_antes ? ' on' : '') + '" data-cot="' + esc(it.id) + '" title="'
+      + (it.cotizado_antes ? (esc(it.cotizado_antes_nota || 'Ya se cotizó antes') + ' — clic para quitar') : 'Clic para marcar que ya se cotizó antes') + '">'
+      + (it.cotizado_antes ? '◆ Ya cotizado' : '◇ marcar cotizado') + '</button>'
+      + (it.estado === 'borrador' && preguntas(it) ? '<br><span class="flag">Preguntas abiertas</span>' : '') + '</td>'
       + '<td>' + thumb(it) + '</td>'
       + '<td class="pre">' + (it.hoja === 'despieces' ? '<span class="secBadge">Despiece</span><br>' : '') + esc(it.localizacion) + '</td>'
       + '<td class="pre">' + esc(it.material || (it.img_material ? '(ver imagen)' : ''))
@@ -493,10 +532,15 @@ function cajon() {
   var h = '<div class="scrim" id="scrim"></div><aside class="drawer" role="dialog" aria-modal="true" aria-label="Ficha del acabado">'
     + '<div class="dh"><h2>' + (e.nuevo ? 'Nuevo acabado' : 'Acabado') + '</h2>'
     + '<div style="display:flex;gap:8px;align-items:center">'
-    + '<span class="pill ' + (d.estado === 'listo' ? 'listo' : 'borrador') + '">' + (d.estado === 'listo' ? '✓ Listo para cotizar' : 'Borrador') + '</span>'
+    + '<span class="pill ' + etiqueta(d.estado).cls + '">' + etiqueta(d.estado).txt + '</span>'
     + '<button class="btn" type="button" id="x">Cerrar</button></div></div><div class="db" id="dbody">';
 
   if (d.estado === 'listo' && d.listo_en) h += '<div class="note ok">Cerrado para cotizar el ' + esc(fdate(d.listo_en)) + '.</div>';
+  h += '<div class="cotBox' + (d.cotizado_antes ? ' on' : '') + '">'
+    + '<label><input type="checkbox" id="cotAntes"' + (d.cotizado_antes ? ' checked' : '') + (puede ? '' : ' disabled') + '> <b>Ya se había cotizado antes</b></label>'
+    + '<input id="cotNota" placeholder="¿Dónde o cuándo? Obra, fecha, proveedor…" value="' + esc(d.cotizado_antes_nota || '') + '"' + (d.cotizado_antes ? '' : ' hidden') + (puede ? '' : ' disabled') + '>'
+    + (d.cotizado_antes && d.cotizado_por ? '<span class="sub">Marcado por ' + esc(d.cotizado_por) + (d.cotizado_en ? ' el ' + esc(fdate(d.cotizado_en)) : '') + '</span>' : '')
+    + '</div>';
 
   // imágenes
   h += '<div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin-bottom:6px">Imágenes</div><div class="imgs">';
@@ -545,7 +589,13 @@ function cajon() {
   $('dbody').addEventListener('input', function (ev) {
     var k = ev.target.getAttribute && ev.target.getAttribute('data-k');
     if (k) S.edit.draft[k] = ev.target.value;
+    if (ev.target.id === 'cotNota') S.edit.draft.cotizado_antes_nota = ev.target.value;
   });
+  if ($('cotAntes')) $('cotAntes').onchange = function () {
+    S.edit.draft.cotizado_antes = this.checked;
+    var n = $('cotNota'); if (n) { n.hidden = !this.checked; if (!this.checked) { n.value = ''; S.edit.draft.cotizado_antes_nota = ''; } }
+    $('dbody').querySelector('.cotBox').classList.toggle('on', this.checked);
+  };
   $('dbody').addEventListener('click', clickCajon);
   if ($('guardar')) $('guardar').onclick = function () { guardar(false); };
   if ($('cerrarR')) $('cerrarR').onclick = function () { guardar(true); };
@@ -586,6 +636,8 @@ function limpiar(d) {
   var o = {};
   FIELDS.forEach(function (f) { o[f[0]] = String(d[f[0]] == null ? '' : d[f[0]]).trim(); });
   if (d.hoja) o.hoja = d.hoja;
+  o.cotizado_antes = !!d.cotizado_antes;
+  o.cotizado_antes_nota = String(d.cotizado_antes_nota || '').trim();
   IMGS.forEach(function (m) { o[m[0]] = d[m[0]] || null; });
   return o;
 }
@@ -608,7 +660,7 @@ async function guardar(listo) {
   cerrarCajon(); cargar();
 }
 async function reabrir() {
-  var r = await sb.from('acabados').update({ estado: 'borrador', listo_por: null, listo_en: null, actualizado_por: firma() }).eq('id', S.edit.id);
+  var r = await sb.from('acabados').update({ estado: 'borrador', listo_por: null, listo_en: null, cotizado_por: null, cotizado_en: null, actualizado_por: firma() }).eq('id', S.edit.id);
   if (r.error) { toast('No se pudo reabrir: ' + r.error.message); return; }
   S.edit.draft.estado = 'borrador'; conScroll(cajon); cargar();
 }
@@ -622,13 +674,28 @@ function pedirBorrar() {
   };
 }
 async function alternarEstado(it) {
-  var listo = it.estado !== 'listo';
-  var r = await sb.from('acabados').update(listo
-    ? { estado: 'listo', listo_por: firma(), listo_en: new Date().toISOString(), actualizado_por: firma() }
-    : { estado: 'borrador', listo_por: null, listo_en: null, actualizado_por: firma() }).eq('id', it.id);
+  var listo = it.estado !== 'listo', ahora = new Date().toISOString();
+  var p = listo
+    ? { estado: 'listo', listo_por: firma(), listo_en: ahora, actualizado_por: firma() }
+    : { estado: 'borrador', listo_por: null, listo_en: null, actualizado_por: firma() };
+  var r = await sb.from('acabados').update(p).eq('id', it.id);
   if (r.error) { toast('No se pudo actualizar: ' + r.error.message); return; }
-  it.estado = listo ? 'listo' : 'borrador'; render();
-  toast(listo ? 'Renglón listo para cotizar' : 'Renglón reabierto');
+  for (var k in p) it[k] = p[k];
+  render();
+  toast(listo ? 'Listo para cotizar' : 'Renglón reabierto');
+}
+
+// La etiqueta de "ya cotizado antes" es independiente del estado
+async function alternarCotizadoAntes(it) {
+  var v = !it.cotizado_antes, ahora = new Date().toISOString();
+  var p = { cotizado_antes: v, actualizado_por: firma() };
+  if (v) { p.cotizado_por = firma(); p.cotizado_en = ahora; }
+  else { p.cotizado_por = null; p.cotizado_en = null; p.cotizado_antes_nota = ''; }
+  var r = await sb.from('acabados').update(p).eq('id', it.id);
+  if (r.error) { toast('No se pudo marcar: ' + r.error.message); return; }
+  for (var k in p) it[k] = p[k];
+  render();
+  toast(v ? 'Marcado como ya cotizado antes' : 'Etiqueta quitada');
 }
 
 /* ---- bitácora ---- */
@@ -869,7 +936,7 @@ async function exportPdf() {
         String(r.proveedor || '').trim() || '— falta proveedor —',
         [r.naturaleza, r.acabado].filter(Boolean).join(' · '),
         String(r.formato || (r.img_formato ? '(ver imagen)' : '')),
-        r.estado === 'listo' ? 'LISTO' : 'Borrador',
+        (r.estado === 'listo' ? 'LISTO' : 'Borrador') + (r.cotizado_antes ? '\nya cotizado' : ''),
         String(r.observaciones || '')];
     });
     var inicio = y + 22;
@@ -890,6 +957,7 @@ async function exportPdf() {
         if (dt.column.index === 3 && !String(r.proveedor || '').trim()) { dt.cell.styles.textColor = [138, 90, 0]; dt.cell.styles.fontStyle = 'italic'; }
         if (dt.column.index === 6 && r.estado === 'listo') { dt.cell.styles.textColor = [26, 110, 74]; dt.cell.styles.fontStyle = 'bold'; }
         if (r.estado === 'listo') dt.cell.styles.fillColor = [221, 239, 226];
+        else if (r.cotizado_antes) dt.cell.styles.fillColor = [218, 232, 240];
       },
       didDrawPage: function () {
         doc.setFontSize(7.5); doc.setTextColor(140, 150, 160);
@@ -934,8 +1002,8 @@ async function hacerBackup() {
     var filas = lista.map(function (r) {
       var u = imgUrl(r.img_ref || r.img_material || r.img_formato);
       var bit = (porFila[r.id] || []).sort(function (a, b) { return a.t < b.t ? -1 : 1; });
-      return '<tr class="' + (r.estado === 'listo' ? 'listo' : '') + '">'
-        + '<td>' + (r.estado === 'listo' ? '✓ Listo' : 'Borrador') + (r.hoja === 'despieces' ? '<br><i>Despiece</i>' : '') + '</td>'
+      return '<tr class="' + (r.estado === 'listo' ? 'listo' : (r.cotizado_antes ? 'cotizado' : '')) + '">'
+        + '<td>' + etiqueta(r.estado).txt + (r.cotizado_antes ? '<br><b>◆ Ya cotizado</b>' + (r.cotizado_antes_nota ? '<div class="s">' + esc(r.cotizado_antes_nota) + '</div>' : '') : '') + (r.hoja === 'despieces' ? '<br><i>Despiece</i>' : '') + '</td>'
         + '<td>' + (u ? '<img src="' + u + '">' : '') + '</td>'
         + '<td>' + esc(r.localizacion) + '</td>'
         + '<td>' + esc(r.material) + '<div class="s">' + esc([r.naturaleza, r.acabado].filter(Boolean).join(' · ')) + '</div></td>'
@@ -957,7 +1025,7 @@ async function hacerBackup() {
       + 'table{border-collapse:collapse;width:100%;background:#FFFDF7;margin-top:12px}'
       + 'th{background:#1D4E6E;color:#FFFDF7;text-align:left;padding:8px;font-size:11px;text-transform:uppercase;letter-spacing:.06em}'
       + 'td{border-bottom:1px solid #E2DACA;padding:8px;vertical-align:top}'
-      + 'tr.listo td{background:#DDEFE2}img{width:92px;height:92px;object-fit:cover;border-radius:4px}'
+      + 'tr.listo td{background:#DDEFE2}tr.cotizado td{background:#DAE8F0}img{width:92px;height:92px;object-fit:cover;border-radius:4px}'
       + '.s{color:#6B7684;font-size:11px}.p{color:#1D4E6E;font-weight:600}'
       + '.b{font-size:11px;max-width:320px}.b>div{border-left:2px solid #1D4E6E;padding-left:7px;margin-bottom:6px}'
       + '.b>div.sys{border-left-color:#E2DACA;color:#6B7684}'
@@ -1003,6 +1071,8 @@ $('tablewrap').addEventListener('change', function (ev) { if (ev.target && ev.ta
 $('tablewrap').addEventListener('click', function (ev) {
   var tg = ev.target.closest && ev.target.closest('[data-toggle]');
   if (tg) { ev.stopPropagation(); var it = S.items.filter(function (i) { return i.id === tg.getAttribute('data-toggle'); })[0]; if (it) alternarEstado(it); return; }
+  var tc = ev.target.closest && ev.target.closest('[data-cot]');
+  if (tc) { ev.stopPropagation(); var ic = S.items.filter(function (i) { return i.id === tc.getAttribute('data-cot'); })[0]; if (ic) alternarCotizadoAntes(ic); return; }
   var z = ev.target.getAttribute && ev.target.getAttribute('data-zoom');
   if (z) { ev.stopPropagation(); verZoom(z); return; }
   var tr = ev.target.closest && ev.target.closest('tr[data-id]');
